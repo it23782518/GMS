@@ -13,8 +13,8 @@ const EquipmentList = () => {
   const [searchEquipment, setSearchEquipment] = useState([]);
   const [displayEquipment, setDisplayEquipment] = useState([]);
   const [search, setSearch] = useState("");
-  const [MaintenanceDate, setMaintenanceDate] = useState();
-  const [status, setStatus] = useState("");
+  const [statuses, setStatuses] = useState({});
+  const [maintenanceDates, setMaintenanceDates] = useState({});
 
   useEffect(() => {
     const fetchEquipment = async () => {
@@ -39,13 +39,14 @@ const EquipmentList = () => {
     }
   };
 
-  const onUpdateStatus = async (id, status) => {
+  const onUpdateStatus = async (id) => {
     try {
-      await updateEquipmentStatus(id, status);
+      const newStatus = statuses[id] || "AVAILABLE";
+      await updateEquipmentStatus(id, newStatus);
       setEquipment(
-        equipment.map((item) =>
-          item.id === id ? { ...item, status } : item
-        )
+          equipment.map((item) =>
+              item.id === id ? { ...item, status: newStatus } : item
+          )
       );
       alert("Equipment status updated successfully");
     } catch (error) {
@@ -60,16 +61,15 @@ const EquipmentList = () => {
       return;
     }
     try {
-      if(!isNaN(search)){
+      if (!isNaN(search)) {
         const response = await getEquipmentById(search);
         setSearchEquipment([response.data]);
         setDisplayEquipment([response.data]);
-      } else{
+      } else {
         const response = await searchEquipmentByName(search);
         setSearchEquipment(response.data);
         setDisplayEquipment(response.data);
       }
-
     } catch (error) {
       console.error("Error fetching equipment: ", error);
       alert("Equipment not found");
@@ -84,15 +84,18 @@ const EquipmentList = () => {
     }
   }, [equipment, searchEquipment]);
 
-  const onMaintenanceDate = async (id, maintenanceDate) => {
+  const onMaintenanceDate = async (id) => {
     try {
+      const maintenanceDate = maintenanceDates[id];
+      if (!maintenanceDate) {
+        alert("Please select a maintenance date");
+        return;
+      }
       await updateEquipmentMaintenanceDate(id, maintenanceDate);
       setEquipment(
-        equipment.map((item) =>
-          item.id === id
-            ? { ...item, lastMaintenanceDate: maintenanceDate }
-            : item
-        )
+          equipment.map((item) =>
+              item.id === id ? { ...item, lastMaintenanceDate: maintenanceDate } : item
+          )
       );
       alert("Equipment maintenance date updated successfully");
     } catch (error) {
@@ -102,22 +105,22 @@ const EquipmentList = () => {
   };
 
   return (
-    <div className="equipment-list-container">
-      <div className="search-section">
-        <input
-          className="search-input"
-          placeholder="Search equipment by ID, Name or Category"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button className="search-button" onClick={() => onSearch(search)}>
-          Search
-        </button>
-      </div>
+      <div className="equipment-list-container">
+        <div className="search-section">
+          <input
+              className="search-input"
+              placeholder="Search equipment by ID, Name or Category"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="search-button" onClick={onSearch}>
+            Search
+          </button>
+        </div>
 
-      <div className="table-container">
-        <table className="equipment-table">
-          <thead>
+        <div className="table-container">
+          <table className="equipment-table">
+            <thead>
             <tr>
               <th>ID</th>
               <th>Name</th>
@@ -128,63 +131,67 @@ const EquipmentList = () => {
               <th>Warranty Expiry</th>
               <th>Actions</th>
             </tr>
-          </thead>
-          <tbody>
+            </thead>
+            <tbody>
             {displayEquipment.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.name}</td>
-                <td>{item.category}</td>
-                <td>
-                  {item.status}
-                  <select
-                    value={status || "AVAILABLE"}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="status-select"
-                  >
-                    <option value="AVAILABLE">Available</option>
-                    <option value="UNAVAILABLE">Unavailable</option>
-                    <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-                    <option value="OUT_OF_ORDER">Out of Order</option>
-                  </select>
-                  <button
-                    className="update-button"
-                    onClick={() => onUpdateStatus(item.id, status)}
-                  >
-                    Update
-                  </button>
-                </td>
-                <td>{item.purchaseDate}</td>
-                <td>
-                  {item.lastMaintenanceDate}
-                  <input
-                    type="date"
-                    value={MaintenanceDate}
-                    onChange={(e) => setMaintenanceDate(e.target.value)}
-                    className="maintenance-date-input"
-                  />
-                  <button
-                    className="update-button"
-                    onClick={() => onMaintenanceDate(item.id, MaintenanceDate)}
-                  >
-                    Update
-                  </button>
-                </td>
-                <td>{item.warrantyExpiry}</td>
-                <td>
-                  <button
-                    className="delete-button"
-                    onClick={() => onDelete(item.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>{item.name}</td>
+                  <td>{item.category}</td>
+                  <td>
+                    {item.status}
+                    <select
+                        value={statuses[item.id] || item.status}
+                        onChange={(e) =>
+                            setStatuses((prev) => ({ ...prev, [item.id]: e.target.value }))
+                        }
+                        className="status-select"
+                    >
+                      <option value="AVAILABLE">Available</option>
+                      <option value="UNAVAILABLE">Unavailable</option>
+                      <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+                      <option value="OUT_OF_ORDER">Out of Order</option>
+                    </select>
+                    <button
+                        className="update-button"
+                        onClick={() => onUpdateStatus(item.id)}
+                    >
+                      Update
+                    </button>
+                  </td>
+                  <td>{item.purchaseDate}</td>
+                  <td>
+                    {item.lastMaintenanceDate}
+                    <input
+                        type="date"
+                        value={maintenanceDates[item.id] || ""}
+                        onChange={(e) =>
+                            setMaintenanceDates((prev) => ({ ...prev, [item.id]: e.target.value }))
+                        }
+                        className="maintenance-date-input"
+                    />
+                    <button
+                        className="update-button"
+                        onClick={() => onMaintenanceDate(item.id)}
+                    >
+                      Update
+                    </button>
+                  </td>
+                  <td>{item.warrantyExpiry}</td>
+                  <td>
+                    <button
+                        className="delete-button"
+                        onClick={() => onDelete(item.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
   );
 };
 
